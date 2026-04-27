@@ -1,0 +1,690 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OneDrive Health Check &mdash; CPC-Magne-7E5C8</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#f2f1ed;--card:#fff;--bd:#e0ddd7;--bd2:#ebe8e2;
+    --ink:#1c1917;--ink2:#44403c;--muted:#78716c;--accent:#d4622a;
+    --f-sans:'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;
+    --f-mono:'Cascadia Code','Cascadia Mono','Consolas',monospace;
+    --p-bg:#f0fdf4;--p-bd:#6ee7b7;--p-t:#15803d;
+    --f-bg:#fff5f5;--f-bd:#fca5a5;--f-t:#b91c1c;
+    --w-bg:#fffbeb;--w-bd:#fcd34d;--w-t:#a16207;
+    --i-bg:#eff6ff;--i-bd:#93c5fd;--i-t:#1d4ed8;
+    --u-bg:#fafaf8;--u-bd:#d6d3d1;--u-t:#57534e;
+  }
+  body{font-family:var(--f-sans);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.55}
+  .page-header{background:#1c1917;color:#fafaf8;padding:26px 40px 22px;border-bottom:3px solid var(--accent)}
+  .header-top{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+  .od-icon{width:38px;height:38px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+  .page-header h1{font-size:18px;font-weight:700;letter-spacing:-.3px}
+  .page-header .subtitle{color:#a8a29e;font-size:12.5px;margin-top:2px}
+  .meta-grid{display:flex;gap:28px;flex-wrap:wrap;padding-top:14px;border-top:1px solid #292524}
+  .meta-item label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#78716c;margin-bottom:3px;font-weight:600}
+  .meta-item span{font-size:12.5px;color:#e7e5e4;font-family:var(--f-mono);word-break:break-all}
+  .overall-banner{padding:14px 40px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;border-bottom:1px solid var(--bd)}
+  .overall-pass{background:var(--p-bg)}.overall-fail{background:var(--f-bg)}.overall-warn{background:var(--w-bg)}.overall-unknown{background:var(--u-bg)}
+  .big-status{font-size:20px;font-weight:800;letter-spacing:2px;color:var(--ink)}
+  .overall-pass .big-status{color:var(--p-t)}.overall-fail .big-status{color:var(--f-t)}.overall-warn .big-status{color:var(--w-t)}
+  .overall-banner .subtext{font-size:13px;color:var(--muted)}
+  .score-pills{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+  .score-pill{padding:3px 11px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid transparent}
+  .pill-pass{background:var(--p-bg);color:var(--p-t);border-color:var(--p-bd)}.pill-fail{background:var(--f-bg);color:var(--f-t);border-color:var(--f-bd)}
+  .pill-warn{background:var(--w-bg);color:var(--w-t);border-color:var(--w-bd)}.pill-info{background:var(--i-bg);color:var(--i-t);border-color:var(--i-bd)}
+  .pill-unknown{background:var(--u-bg);color:var(--u-t);border-color:var(--u-bd)}
+  .content{padding:26px 40px;max-width:1320px;margin:0 auto}
+  .toolbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px}
+  .toolbar button{font:12px/1 var(--f-sans);padding:5px 12px;border:1px solid var(--bd);border-radius:4px;background:var(--card);color:var(--ink2);cursor:pointer;transition:background .15s}
+  .toolbar button:hover{background:var(--bd2)}
+  .group-section{background:var(--card);border:1px solid var(--bd);border-radius:6px;margin-bottom:12px;overflow:hidden}
+  .group-header{display:flex;align-items:center;gap:10px;padding:12px 18px;background:#faf9f7;border-bottom:1px solid var(--bd);cursor:pointer;user-select:none;-webkit-user-select:none}
+  .group-section.collapsed>.group-header{border-bottom:none}
+  .chevron{width:18px;height:18px;flex-shrink:0;transition:transform .2s ease;color:var(--muted)}
+  .group-section.collapsed .chevron{transform:rotate(-90deg)}
+  .group-header h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink)}
+  .group-meta{margin-left:auto;font-size:11.5px;color:var(--muted)}
+  .group-body{overflow:hidden;transition:max-height .25s ease;max-height:9999px}
+  .group-section.collapsed .group-body{max-height:0}
+  .badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:3px;border:1px solid transparent}
+  .badge-pass{background:var(--p-bg);color:var(--p-t);border-color:var(--p-bd)}.badge-fail{background:var(--f-bg);color:var(--f-t);border-color:var(--f-bd)}
+  .badge-warn{background:var(--w-bg);color:var(--w-t);border-color:var(--w-bd)}.badge-info{background:var(--i-bg);color:var(--i-t);border-color:var(--i-bd)}
+  .check-table{width:100%;border-collapse:collapse}
+  .check-table thead tr{background:#f6f5f1}
+  .check-table th{padding:7px 16px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);border-bottom:1px solid var(--bd)}
+  .check-table td{padding:10px 16px;border-bottom:1px solid #f5f4f0;vertical-align:top}
+  .check-table tbody tr:last-child td{border-bottom:none}.check-table tbody tr:nth-child(even) td{background:#fdfdfc}.check-table tbody tr:hover td{background:#f9f8f5}
+  .check-name{font-family:var(--f-mono);font-size:12px;font-weight:500;color:var(--ink2);white-space:nowrap}
+  .detail-cell{color:var(--ink2);font-size:13px;line-height:1.5}
+  .raw-value{font-family:var(--f-mono);font-size:11px;color:var(--muted);background:#f9f8f6;border:1px solid var(--bd);border-radius:3px;padding:4px 8px;margin-top:6px;word-break:break-all}
+  .status-badge{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:3px;white-space:nowrap;border:1px solid transparent}
+  .status-pass{background:var(--p-bg);color:var(--p-t);border-color:var(--p-bd)}.status-fail{background:var(--f-bg);color:var(--f-t);border-color:var(--f-bd)}
+  .status-warn{background:var(--w-bg);color:var(--w-t);border-color:var(--w-bd)}.status-info{background:var(--i-bg);color:var(--i-t);border-color:var(--i-bd)}
+  .status-unknown{background:var(--u-bg);color:var(--u-t);border-color:var(--u-bd)}
+  .snapshot-table td{padding:5px 14px;font-size:12px;font-family:var(--f-mono)}.snapshot-table th{font-size:10px;padding:6px 14px}
+  .snap-path{color:var(--muted);font-size:11px}.snap-name{font-weight:600;color:var(--ink)}.snap-kind{color:#a8a29e;font-size:10.5px}
+  .snap-value{color:var(--i-t);word-break:break-all;max-width:440px}.snap-notset{color:#c4b5a4;font-style:italic}.snap-row-notset td{opacity:.45}
+  .snap-desc{color:#a8a29e;font-size:10px;font-style:italic;margin-top:2px;font-family:var(--f-sans);white-space:normal;line-height:1.4}
+  .page-footer{text-align:center;padding:18px 40px;color:var(--muted);font-size:11.5px;border-top:1px solid var(--bd);margin-top:6px}
+  code{font-family:var(--f-mono);background:#f5f4f0;padding:1px 5px;border-radius:3px;font-size:12px;color:var(--ink2)}
+  @media print{body{background:#fff}.toolbar{display:none}.group-body{max-height:none!important}.group-section.collapsed .group-body{max-height:none!important}.overall-banner,.status-badge,.badge,.score-pill{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="header-top">
+    <div class="od-icon">&#9729;</div>
+    <div>
+      <h1>OneDrive Client Health Check</h1>
+      <div class="subtitle">Computer + User configuration policy delivery, prerequisites, runtime state, and known blockers</div>
+    </div>
+  </div>
+  <div class="meta-grid">
+    <div class="meta-item"><label>Computer</label><span>CPC-Magne-7E5C8</span></div>
+    <div class="meta-item"><label>User</label><span>AzureAD\Magneto</span></div>
+    <div class="meta-item"><label>SID</label><span>S-1-12-1-2291049534-1148096202-4019547310-1586643238</span></div>
+    <div class='meta-item'><label>OneDrive Path</label><span>C:\Program Files\Microsoft OneDrive\OneDrive.exe</span></div>
+         <div class='meta-item'><label>Install Type</label><span>Per-Machine</span></div>
+         <div class='meta-item'><label>Client Version</label><span>26.063.0405.0002</span></div>
+    <div class="meta-item"><label>Run Time</label><span>Monday, April 27 2026  13:33:14</span></div>
+    <div class="meta-item"><label>Expected Tenant ID</label><span><em>Not supplied</em></span></div>
+    <div class="meta-item"><label>Script Version</label><span>4.0.0</span></div>
+  </div>
+</header>
+
+<div class="overall-banner overall-warn">
+  <span class="big-status">WARNING</span>
+  <span class="subtext">34 checks &nbsp;&bull;&nbsp; 6 groups</span>
+  <div class="score-pills">
+    <span class="score-pill pill-pass">&#10003; 23 Pass</span>
+    <span class="score-pill pill-warn">&#9651; 3 Warning</span>
+    <span class="score-pill pill-fail">&#10007; 0 Fail</span>
+    <span class="score-pill pill-info">&#9432; 6 Info</span>
+    <span class="score-pill pill-unknown">? 2 Unknown</span>
+  </div>
+</div>
+
+<main class="content">
+  <div class="toolbar"><button onclick="expandAll()">Expand All</button><button onclick="collapseAll()">Collapse All</button></div>
+  <section class='group-section'>
+            <div class='group-header' onclick='toggleSection(this)'>
+                <svg class='chevron' viewBox='0 0 16 16' fill='currentColor'><path d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/></svg>
+                <h2>Blockers</h2>
+                <span class="badge badge-pass">Healthy</span>
+                <span class='group-meta'>3 pass &nbsp;/&nbsp; 0 warn &nbsp;/&nbsp; 0 fail</span>
+            </div>
+            <div class='group-body'><table class='check-table'>
+                <thead><tr><th style='width:120px'>Status</th><th style='width:220px'>Check</th><th>Detail</th></tr></thead>
+                <tbody><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>FolderSizes</td>
+                <td class='detail-cell'>No folders exceed 50GB threshold<div class='raw-value'>Pictures=0GB | Documents=1.89GB | Desktop=0GB</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>AuthEndpointConnectivity</td>
+                <td class='detail-cell'>login.microsoftonline.com reachable on TCP 443 (resolved to 20.190.155.65). Note: if SSL inspection is in place, verify login.microsoftonline.com is excluded from certificate interception — OneDrive uses certificate pinning for auth flows.<div class='raw-value'>DNS:20.190.155.65 TCP:OPEN</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>WNSConnectivity</td>
+                <td class='detail-cell'>skydrive.wns.windows.com reachable on TCP 443 (resolved to 20.59.87.227)<div class='raw-value'>DNS:20.59.87.227 TCP:OPEN</div></td>
+            </tr></tbody>
+            </table></div>
+        </section>
+<section class='group-section'>
+            <div class='group-header' onclick='toggleSection(this)'>
+                <svg class='chevron' viewBox='0 0 16 16' fill='currentColor'><path d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/></svg>
+                <h2>Client</h2>
+                <span class="badge badge-pass">Healthy</span>
+                <span class='group-meta'>4 pass &nbsp;/&nbsp; 0 warn &nbsp;/&nbsp; 0 fail</span>
+            </div>
+            <div class='group-body'><table class='check-table'>
+                <thead><tr><th style='width:120px'>Status</th><th style='width:220px'>Check</th><th>Detail</th></tr></thead>
+                <tbody><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>ClientInstalled</td>
+                <td class='detail-cell'>OneDrive client is installed (Per-Machine) at: C:\Program Files\Microsoft OneDrive\OneDrive.exe<div class='raw-value'>C:\Program Files\Microsoft OneDrive\OneDrive.exe</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>ClientProcessRunning</td>
+                <td class='detail-cell'>OneDrive.exe is running (PID(s): 26712)<div class='raw-value'>26712</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>ClientVersion</td>
+                <td class='detail-cell'>OneDrive client version 26.63.405.2 (&gt;= 26.55.323.4)<div class='raw-value'>26.063.0405.0002</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>InstallType</td>
+                <td class='detail-cell'>Per-machine installation — C:\Program Files\Microsoft OneDrive\OneDrive.exe (v26.063.0405.0002). Recommended for managed enterprise deployments.<div class='raw-value'>Type=Per-Machine | Path=C:\Program Files\Microsoft OneDrive\OneDrive.exe | Version=26.063.0405.0002</div></td>
+            </tr></tbody>
+            </table></div>
+        </section>
+<section class='group-section'>
+            <div class='group-header' onclick='toggleSection(this)'>
+                <svg class='chevron' viewBox='0 0 16 16' fill='currentColor'><path d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/></svg>
+                <h2>Policy (Computer)</h2>
+                <span class="badge badge-warn">Warnings</span>
+                <span class='group-meta'>6 pass &nbsp;/&nbsp; 2 warn &nbsp;/&nbsp; 0 fail</span>
+            </div>
+            <div class='group-body'><table class='check-table'>
+                <thead><tr><th style='width:120px'>Status</th><th style='width:220px'>Check</th><th>Detail</th></tr></thead>
+                <tbody><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>KFMPolicyPresent</td>
+                <td class='detail-cell'>KFM policy present and configured. Mode: KFMOptInWithWizard (tenant: daa3d854-29bd-4d1a-b704-187329d569d8) | Per-folder silent: Desktop, Documents, Pictures<div class='raw-value'>KFMOptInWithWizard (tenant: daa3d854-29bd-4d1a-b704-187329d569d8) | Per-folder silent: Desktop, Documents, Pictures</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-warn'>&#9651; Warning</span></td>
+                <td class='check-name'>KFMBlockOptIn</td>
+                <td class='detail-cell'>KFMBlockOptIn = 1 — user-facing KFM wizard is disabled. No KFMSilentOptIn is deployed, so users cannot initiate KFM and no silent admin path exists. KFM will not progress unless KFMSilentOptIn or a per-folder policy is also configured.<div class='raw-value'>1</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-warn'>&#9651; Warning</span></td>
+                <td class='check-name'>KFMBlockOptOut</td>
+                <td class='detail-cell'>KFMBlockOptOut is not set — users can reverse KFM redirection from the OneDrive tray icon. Recommended for managed deployments.<div class='raw-value'>0</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-info'>&#9432; Info</span></td>
+                <td class='check-name'>KFMNotificationConfig</td>
+                <td class='detail-cell'>KFMSilentOptInWithNotification not configured — silent KFM completes without user notification (default)</td>
+            </tr><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>KFMPolicyInteraction</td>
+                <td class='detail-cell'>Effective KFM mode: Admin-driven silent opt-in (KFMSilentOptIn). User wizard disabled by KFMBlockOptIn=1 (does NOT suppress the silent path — this is correct per Microsoft docs). KFMBlockOptOut is not set; users can still reverse KFM from the tray icon.<div class='raw-value'>KFMSilentOptIn= | KFMOptInWithWizard=daa3d854-29bd-4d1a-b704-187329d569d8 | KFMBlockOptIn=1 | KFMBlockOptOut=0 | PerDesktop=1 | PerDocuments=1 | PerPictures=1</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>SilentAccountConfigPolicy</td>
+                <td class='detail-cell'>SilentAccountConfig = 1 — OneDrive will silently sign in using the device AAD/Hybrid join token. This is required for KFMSilentOptIn to complete without user interaction.<div class='raw-value'>1</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>FilesOnDemandPolicy</td>
+                <td class='detail-cell'>FilesOnDemandEnabled = 1 — Files On Demand explicitly enabled via policy. Files will appear as online-only placeholders during KFM, reducing local disk pressure.<div class='raw-value'>1</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>PreventNetworkTrafficPreSignIn</td>
+                <td class='detail-cell'>PreventNetworkTrafficPreUserSignIn not set or 0 — OneDrive may attempt silent sign-in and KFM immediately on startup without waiting for interactive sign-in.<div class='raw-value'>0</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>TenantAllowList</td>
+                <td class='detail-cell'>Tenant allow/block lists are configured and ExpectedTenantId is permitted<div class='raw-value'>Allow=[daa3d854-29bd-4d1a-b704-187329d569d8] Block=[]</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-info'>&#9432; Info</span></td>
+                <td class='check-name'>KFMGPOSource</td>
+                <td class='detail-cell'>Applied machine GPOs (1): Local Group Policy. Run &#39;gpresult /scope computer /h gpresult.html&#39; to confirm which GPO delivers the OneDrive policy and verify WMI filters / security filtering are not excluding affected machines.<div class='raw-value'>Local Group Policy</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-info'>&#9432; Info</span></td>
+                <td class='check-name'>GPOMachineLastApplied</td>
+                <td class='detail-cell'>Machine GP State EndTime not present. Device is Intune/MDM-enrolled — policies delivered via MDM CSP do not populate the traditional GP refresh timestamp. Validate policy delivery via Intune portal sync status.<div class='raw-value'>MDM-managed: GP EndTime not applicable</div></td>
+            </tr></tbody>
+            </table></div>
+        </section>
+<section class='group-section'>
+            <div class='group-header' onclick='toggleSection(this)'>
+                <svg class='chevron' viewBox='0 0 16 16' fill='currentColor'><path d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/></svg>
+                <h2>Policy (User)</h2>
+                <span class="badge badge-pass">Healthy</span>
+                <span class='group-meta'>1 pass &nbsp;/&nbsp; 0 warn &nbsp;/&nbsp; 0 fail</span>
+            </div>
+            <div class='group-body'><table class='check-table'>
+                <thead><tr><th style='width:120px'>Status</th><th style='width:220px'>Check</th><th>Detail</th></tr></thead>
+                <tbody><tr>
+                <td><span class='status-badge status-info'>&#9432; Info</span></td>
+                <td class='check-name'>HKCUPolicyPresent</td>
+                <td class='detail-cell'>HKCU OneDrive policy key exists with 11 value(s) — see Configuration Snapshot for details<div class='raw-value'>DefaultRootDir, DisableCustomRoot, DisableTutorial, DisablePauseOnBatterySaver, DisablePauseOnMeteredNetwork, DisablePersonalSync, EnableAllOcsiClients, EnableHoldTheFile, KfmForceWindowsDisplayLanguage, DisableFREAnimation, EnableAutoStart</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>HKCUKFMConflict</td>
+                <td class='detail-cell'>No KFM policy values found under HKCU (correct — KFM honors HKLM only)</td>
+            </tr><tr>
+                <td><span class='status-badge status-info'>&#9432; Info</span></td>
+                <td class='check-name'>GPOUserLastApplied</td>
+                <td class='detail-cell'>User GP State EndTime not present. Device is Intune/MDM-enrolled — user-scoped GP timestamps are not written when policies are delivered via MDM CSP.<div class='raw-value'>MDM-managed: GP EndTime not applicable</div></td>
+            </tr></tbody>
+            </table></div>
+        </section>
+<section class='group-section'>
+            <div class='group-header' onclick='toggleSection(this)'>
+                <svg class='chevron' viewBox='0 0 16 16' fill='currentColor'><path d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/></svg>
+                <h2>Prerequisites</h2>
+                <span class="badge badge-pass">Healthy</span>
+                <span class='group-meta'>6 pass &nbsp;/&nbsp; 0 warn &nbsp;/&nbsp; 0 fail</span>
+            </div>
+            <div class='group-body'><table class='check-table'>
+                <thead><tr><th style='width:120px'>Status</th><th style='width:220px'>Check</th><th>Detail</th></tr></thead>
+                <tbody><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>WindowsVersion</td>
+                <td class='detail-cell'>Microsoft Windows 11 Enterprise (Build 26200.8246) — Windows 11 confirmed. Full KFM support.<div class='raw-value'>Microsoft Windows 11 Enterprise (Build 26200.8246)</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>DeviceJoinState</td>
+                <td class='detail-cell'>Azure AD Joined (cloud-only) — SilentAccountConfig=1 will enable fully silent OneDrive sign-in and allow KFMSilentOptIn to complete without user interaction.<div class='raw-value'>JoinType=Azure AD Joined (cloud-only) | DeviceTenantId=daa3d854-29bd-4d1a-b704-187329d569d8</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>AccountSignedIn</td>
+                <td class='detail-cell'>OneDrive signed in as: Magneto@TimelyO365.onmicrosoft.com<div class='raw-value'>Magneto@TimelyO365.onmicrosoft.com</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-unknown'>? Unknown</span></td>
+                <td class='check-name'>TenantMatch</td>
+                <td class='detail-cell'>ExpectedTenantId parameter not supplied — tenant match cannot be validated</td>
+            </tr><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>SilentSignInRuntimeStatus</td>
+                <td class='detail-cell'>SilentBusinessConfigCompleted=1 — OneDrive completed silent sign-in provisioning. [PRT=Valid | AutoConfigured=absent]<div class='raw-value'>SilentBusinessConfigCompleted=1 | PRT=Valid | AutoConfigured=absent</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>FolderRedirConflict</td>
+                <td class='detail-cell'>No traditional UNC-based Folder Redirection detected. All three folders are eligible for KFM.<div class='raw-value'>Desktop[OneDrive]=C:\Users\Magneto\OneDrive - Timely Org\Desktop | Documents[OneDrive]=C:\Users\Magneto\OneDrive - Timely Org\Documents | Pictures[OneDrive]=C:\Users\Magneto\OneDrive - Timely Org\Pictures</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-unknown'>? Unknown</span></td>
+                <td class='check-name'>QuotaHeadroom</td>
+                <td class='detail-cell'>QuotaAvailable or QuotaTotal not present — OneDrive may not have synced quota data yet</td>
+            </tr><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>LocalDiskHeadroom</td>
+                <td class='detail-cell'>413.7GB free on C:<div class='raw-value'>Drive C: — Free: 413.7GB / Total: 510.73GB</div></td>
+            </tr></tbody>
+            </table></div>
+        </section>
+<section class='group-section'>
+            <div class='group-header' onclick='toggleSection(this)'>
+                <svg class='chevron' viewBox='0 0 16 16' fill='currentColor'><path d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/></svg>
+                <h2>Runtime</h2>
+                <span class="badge badge-warn">Warnings</span>
+                <span class='group-meta'>3 pass &nbsp;/&nbsp; 1 warn &nbsp;/&nbsp; 0 fail</span>
+            </div>
+            <div class='group-body'><table class='check-table'>
+                <thead><tr><th style='width:120px'>Status</th><th style='width:220px'>Check</th><th>Detail</th></tr></thead>
+                <tbody><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>DesktopRedirected</td>
+                <td class='detail-cell'>Desktop is redirected into OneDrive: C:\Users\Magneto\OneDrive - Timely Org\Desktop<div class='raw-value'>C:\Users\Magneto\OneDrive - Timely Org\Desktop</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>DocumentsRedirected</td>
+                <td class='detail-cell'>Documents is redirected into OneDrive: C:\Users\Magneto\OneDrive - Timely Org\Documents<div class='raw-value'>C:\Users\Magneto\OneDrive - Timely Org\Documents</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-pass'>&#10003; Pass</span></td>
+                <td class='check-name'>PicturesRedirected</td>
+                <td class='detail-cell'>Pictures is redirected into OneDrive: C:\Users\Magneto\OneDrive - Timely Org\Pictures<div class='raw-value'>C:\Users\Magneto\OneDrive - Timely Org\Pictures</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-warn'>&#9651; Warning</span></td>
+                <td class='check-name'>KFMCompletionFlags</td>
+                <td class='detail-cell'>0 of 3 KFM-complete. In OneDrive but no KFM completion flag (Desktop, Documents, Pictures) — likely moved manually, not via KFM<div class='raw-value'>Desktop=In-OneDrive-NoFlag[C:\Users\Magneto\OneDrive - Timely Org\Desktop] | Documents=In-OneDrive-NoFlag[C:\Users\Magneto\OneDrive - Timely Org\Documents] | Pictures=In-OneDrive-NoFlag[C:\Users\Magneto\OneDrive - Timely Org\Pictures]</div></td>
+            </tr><tr>
+                <td><span class='status-badge status-info'>&#9432; Info</span></td>
+                <td class='check-name'>SyncDiagKFMState</td>
+                <td class='detail-cell'>No KFM entries found in SyncDiagnostics.log (128 lines scanned). Log may predate KFM activity or this client version uses a different format. See KFMCompletionFlags and folder redirect checks for authoritative state.<div class='raw-value'>Lines scanned: 128</div></td>
+            </tr></tbody>
+            </table></div>
+        </section>
+  <section class='group-section'>
+        <div class='group-header' onclick='toggleSection(this)'>
+            <svg class='chevron' viewBox='0 0 16 16' fill='currentColor'><path d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/></svg>
+            <h2>Configuration Snapshot — OneDrive Policies</h2>
+            <span class='badge badge-info'>41 configured</span>
+            <span class='group-meta'>HKLM (Computer Config) + HKCU (User Config) &nbsp;|&nbsp; all documented policies shown</span>
+        </div>
+        <div class='group-body'><table class='check-table snapshot-table'>
+                <thead><tr><th>Scope</th><th>Path</th><th>Name</th><th>Type</th><th>Value</th></tr></thead>
+                <tbody><tr>
+            <td>HKCU (User Config)</td>
+            <td class='snap-path'>HKCU:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>DefaultRootDir<div class='snap-desc'>Override default local OneDrive folder location (per-tenant subkey)</div></td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr>
+            <td>HKCU (User Config)</td>
+            <td class='snap-path'>HKCU:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>DisableCustomRoot</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr>
+            <td>HKCU (User Config)</td>
+            <td class='snap-path'>HKCU:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>DisableFREAnimation</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr>
+            <td>HKCU (User Config)</td>
+            <td class='snap-path'>HKCU:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>DisablePauseOnBatterySaver</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr>
+            <td>HKCU (User Config)</td>
+            <td class='snap-path'>HKCU:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>DisablePauseOnMeteredNetwork</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr>
+            <td>HKCU (User Config)</td>
+            <td class='snap-path'>HKCU:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>DisablePersonalSync<div class='snap-desc'>Block personal OneDrive accounts; does not affect work/school accounts</div></td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>1</td>
+        </tr><tr>
+            <td>HKCU (User Config)</td>
+            <td class='snap-path'>HKCU:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>DisableTutorial<div class='snap-desc'>Skip the first-run setup tutorial</div></td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr>
+            <td>HKCU (User Config)</td>
+            <td class='snap-path'>HKCU:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>EnableAllOcsiClients<div class='snap-desc'>Allow co-authoring in Office desktop apps via OneDrive</div></td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr>
+            <td>HKCU (User Config)</td>
+            <td class='snap-path'>HKCU:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>EnableAutoStart</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>1</td>
+        </tr><tr>
+            <td>HKCU (User Config)</td>
+            <td class='snap-path'>HKCU:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>EnableHoldTheFile</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr>
+            <td>HKCU (User Config)</td>
+            <td class='snap-path'>HKCU:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>KfmForceWindowsDisplayLanguage</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr class='snap-row-notset'>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>AutomaticUploadBandwidthPercentage<div class='snap-desc'>Throttle uploads to a % of available throughput (1–99)</div></td>
+            <td class='snap-kind'>-</td>
+            <td class='snap-notset'>(Not configured)</td>
+        </tr><tr class='snap-row-notset'>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>AutoMountTeamSites<div class='snap-desc'>Automatically sync SharePoint team site libraries on sign-in</div></td>
+            <td class='snap-kind'>-</td>
+            <td class='snap-notset'>(Not configured)</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>BlockExternalSync<div class='snap-desc'>Prevent syncing libraries shared from outside the organisation</div></td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>DehydrateSyncedTeamSites</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>DisableFirstDeleteDialog</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr class='snap-row-notset'>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>DisableHydrationToast<div class='snap-desc'>Suppress notification asking users to open online-only files locally</div></td>
+            <td class='snap-kind'>-</td>
+            <td class='snap-notset'>(Not configured)</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>DisableNewAccountDetection</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr class='snap-row-notset'>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>DisableOfflineMode<div class='snap-desc'>Prevent users enabling offline access for SharePoint/Teams sites</div></td>
+            <td class='snap-kind'>-</td>
+            <td class='snap-notset'>(Not configured)</td>
+        </tr><tr class='snap-row-notset'>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>DisablePersonalSync<div class='snap-desc'>Block personal OneDrive accounts; does not affect work/school accounts</div></td>
+            <td class='snap-kind'>-</td>
+            <td class='snap-notset'>(Not configured)</td>
+        </tr><tr class='snap-row-notset'>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>DisableTutorial<div class='snap-desc'>Skip the first-run setup tutorial</div></td>
+            <td class='snap-kind'>-</td>
+            <td class='snap-notset'>(Not configured)</td>
+        </tr><tr class='snap-row-notset'>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>DownloadBandwidthLimit<div class='snap-desc'>Cap download speed (KB/s); 0 = unlimited</div></td>
+            <td class='snap-kind'>-</td>
+            <td class='snap-notset'>(Not configured)</td>
+        </tr><tr class='snap-row-notset'>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>EnableADAL<div class='snap-desc'>Enable (1) or disable (0) ADAL modern auth; 0 forces legacy auth</div></td>
+            <td class='snap-kind'>-</td>
+            <td class='snap-notset'>(Not configured)</td>
+        </tr><tr class='snap-row-notset'>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>EnableAllOcsiClients<div class='snap-desc'>Allow co-authoring in Office desktop apps via OneDrive</div></td>
+            <td class='snap-kind'>-</td>
+            <td class='snap-notset'>(Not configured)</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>EnableAutomaticUploadBandwidthManagement<div class='snap-desc'>Let OneDrive dynamically throttle uploads based on available bandwidth</div></td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>EnableContactSupport</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>1</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>EnableSendFeedback</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>EnableSurveyCampaigns</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>EnableSyncAdminReports<div class='snap-desc'>Send sync health telemetry to the Microsoft 365 admin center</div></td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>1</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>FilesOnDemandEnabled<div class='snap-desc'>Enable (1) or disable (0) Files On-Demand placeholder support</div></td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>1</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>ForcedLocalMassDeleteDetection</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>1</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>GPOSetUpdateRing</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>4</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>IgnoreWebProxy</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>KFMBlockOptIn<div class='snap-desc'>1 = block user KFM wizard only (does NOT suppress KFMSilentOptIn); 2 = reverse KFM and block all opt-in</div></td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>1</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>KFMBlockOptOut<div class='snap-desc'>1 = prevent users moving folders back to the device via tray icon</div></td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>KfmForceWindowsDisplayLanguage</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>KFMOptInWithWizard<div class='snap-desc'>Show KFM wizard to prompt users to redirect folders (value = tenant GUID)</div></td>
+            <td class='snap-kind'>String</td>
+            <td class='snap-value'>daa3d854-29bd-4d1a-b704-187329d569d8</td>
+        </tr><tr class='snap-row-notset'>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>KFMSilentOptIn<div class='snap-desc'>Silently redirect Desktop, Documents &amp; Pictures without user interaction (value = tenant GUID)</div></td>
+            <td class='snap-kind'>-</td>
+            <td class='snap-notset'>(Not configured)</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>KFMSilentOptInDesktop<div class='snap-desc'>1 = silently redirect Desktop only</div></td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>1</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>KFMSilentOptInDocuments<div class='snap-desc'>1 = silently redirect Documents only</div></td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>1</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>KFMSilentOptInPictures<div class='snap-desc'>1 = silently redirect Pictures only</div></td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>1</td>
+        </tr><tr class='snap-row-notset'>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>KFMSilentOptInWithNotification<div class='snap-desc'>1 = show toast notification to user after silent KFM completes</div></td>
+            <td class='snap-kind'>-</td>
+            <td class='snap-notset'>(Not configured)</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>LocalMassDeleteFileDeleteThreshold<div class='snap-desc'>Warn before deleting more than N files from OneDrive in one operation</div></td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>10</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>MinDiskSpaceLimitInMB<div class='snap-desc'>Pause sync when free local disk falls below this threshold (MB)</div></td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr class='snap-row-notset'>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>OpenAtLogin<div class='snap-desc'>1 = start OneDrive automatically when the user signs in to Windows</div></td>
+            <td class='snap-kind'>-</td>
+            <td class='snap-notset'>(Not configured)</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>PermitDisablePermissionInheritance</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>PreventNetworkTrafficPreUserSignIn<div class='snap-desc'>1 = block all OneDrive network activity (incl. silent sign-in) until interactive sign-in</div></td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>0</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>SharedContentDeleteConfirmation</td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>1</td>
+        </tr><tr class='snap-row-notset'>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>SharePointOnPremFrontDoorUrl<div class='snap-desc'>SharePoint Server 2019 on-prem: site collection URL for hybrid integration</div></td>
+            <td class='snap-kind'>-</td>
+            <td class='snap-notset'>(Not configured)</td>
+        </tr><tr class='snap-row-notset'>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>SharePointOnPremPrioritization<div class='snap-desc'>SharePoint Server 2019 on-prem: 1 = prefer on-prem over cloud OneDrive</div></td>
+            <td class='snap-kind'>-</td>
+            <td class='snap-notset'>(Not configured)</td>
+        </tr><tr class='snap-row-notset'>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>SharePointOnPremTenantName<div class='snap-desc'>SharePoint Server 2019 on-prem: tenant name shown in sync client UI</div></td>
+            <td class='snap-kind'>-</td>
+            <td class='snap-notset'>(Not configured)</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>SilentAccountConfig<div class='snap-desc'>1 = silently sign in using Windows AAD/Hybrid join token; prerequisite for KFMSilentOptIn without user interaction</div></td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>1</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>SyncAdminReports</td>
+            <td class='snap-kind'>String</td>
+            <td class='snap-value'>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL2lkZW50aXR5L2NsYWltcy90ZW5hbnRpZCI6ImRhYTNkODU0LTI5YmQtNGQxYS1iNzA0LTE4NzMyOWQ1NjlkOCIsImFwcGlkIjoiM2NmNmRmOTItMjc0NS00ZjZmLWJiY2YtMTliNTliY2RiNjJhIiwiaXNzIjoiSXNzdWVyIiwiYXVkIjoiQXVkaWVuY2UifQ.Sed10SMYfnLsz2Rz3cdvs-nsFiRRXyNXJXmjrXrXuZ8</td>
+        </tr><tr class='snap-row-notset'>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>UploadBandwidthLimit<div class='snap-desc'>Cap upload speed (KB/s); 0 = unlimited</div></td>
+            <td class='snap-kind'>-</td>
+            <td class='snap-notset'>(Not configured)</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive</td>
+            <td class='snap-name'>WarningMinDiskSpaceLimitInMB<div class='snap-desc'>Show low-disk warning when free local space drops below this threshold (MB)</div></td>
+            <td class='snap-kind'>DWord</td>
+            <td class='snap-value'>500</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive\AllowTenantList</td>
+            <td class='snap-name'>daa3d854-29bd-4d1a-b704-187329d569d8</td>
+            <td class='snap-kind'>String</td>
+            <td class='snap-value'>daa3d854-29bd-4d1a-b704-187329d569d8</td>
+        </tr><tr>
+            <td>HKLM (Computer Config)</td>
+            <td class='snap-path'>HKLM:\SOFTWARE\Policies\Microsoft\OneDrive\EnableODIgnoreListFromGPO</td>
+            <td class='snap-name'>*.lnk</td>
+            <td class='snap-kind'>String</td>
+            <td class='snap-value'>*.lnk</td>
+        </tr></tbody>
+            </table></div>
+    </section>
+</main>
+
+<footer class="page-footer">
+  Generated by Invoke-ODClientHealthCheck.ps1 v4.0.0 &nbsp;|&nbsp;
+  Monday, April 27 2026  13:33:14 &nbsp;|&nbsp;
+  CPC-Magne-7E5C8 / Magneto
+</footer>
+
+<script>
+function toggleSection(h){h.closest('.group-section').classList.toggle('collapsed')}
+function collapseAll(){document.querySelectorAll('.group-section').forEach(s=>s.classList.add('collapsed'))}
+function expandAll(){document.querySelectorAll('.group-section').forEach(s=>s.classList.remove('collapsed'))}
+document.querySelectorAll('.group-section').forEach(s=>{if(!s.querySelector('.status-fail,.status-warn'))s.classList.add('collapsed')})
+</script>
+</body>
+</html>

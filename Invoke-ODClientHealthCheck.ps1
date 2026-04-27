@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     OneDrive for Business client health diagnostic — runs as the signed-in user.
