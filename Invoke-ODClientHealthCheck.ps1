@@ -116,7 +116,7 @@ $ErrorActionPreference = 'Stop'
 # ============================================================================
 #region CONSTANTS
 # ============================================================================
-$SCRIPT_VERSION = '4.0.0'
+$SCRIPT_VERSION = '4.1.0'
 
 # Policy roots — both Computer Configuration (HKLM) and User Configuration (HKCU)
 $OD_POLICY_HKLM     = 'HKLM:\SOFTWARE\Policies\Microsoft\OneDrive'
@@ -1114,6 +1114,14 @@ function Invoke-ODCheck_SilentSignInRuntimeStatus {
     $SilentDone    = Get-RegValueSafe -Path 'HKCU:\SOFTWARE\Microsoft\OneDrive' -Name 'SilentBusinessConfigCompleted'
     $AutoConfigured= Get-RegValueSafe -Path $OD_ACCOUNT_HKCU -Name 'AutoConfigured'
 
+    # --- LastSignInTime: supplementary stale-auth signal (QWORD FILETIME under Business1) ---
+    $LastSignInRaw = Get-RegValueSafe -Path $OD_ACCOUNT_HKCU -Name 'LastSignInTime'
+    $LastSignInStr = if ($null -eq $LastSignInRaw) { 'absent' }
+                     else {
+                         try { [DateTime]::FromFileTimeUtc([int64]$LastSignInRaw).ToString('yyyy-MM-dd HH:mm UTC') }
+                         catch { "$LastSignInRaw" }
+                     }
+
     # --- PRT state from dsregcmd ---
     $HasPrt = $false; $PrtExpired = $false; $PrtExpiry = $null
     try {
@@ -1130,7 +1138,7 @@ function Invoke-ODCheck_SilentSignInRuntimeStatus {
                elseif ($HasPrt -and $PrtExpired)  { "PRT=EXPIRED(expires=$PrtExpiry)" }
                else                               { 'PRT=None' }
     $AutoStr = if ($null -ne $AutoConfigured -and $AutoConfigured -ne 0) { "AutoConfigured=$AutoConfigured" } else { 'AutoConfigured=absent' }
-    $RawBase = "SilentBusinessConfigCompleted=$SilentDone | $PrtStr | $AutoStr"
+    $RawBase = "SilentBusinessConfigCompleted=$SilentDone | $PrtStr | $AutoStr | LastSignIn=$LastSignInStr"
 
     if ($SilentDone -eq 1) {
         return New-CheckResult -CheckName $CheckName -Group $Group -Status 'Pass' `
@@ -1473,6 +1481,80 @@ function Invoke-ODCheck_KFMCompletionFlags {
     $Status = if ($Anomalous.Count -gt 0) { 'Fail' } elseif ($Complete -gt 0) { 'Warning' } else { 'Warning' }
     return New-CheckResult -CheckName $CheckName -Group $Group -Status $Status `
         -Detail "$Complete of 3 KFM-complete. $($Issues -join '; ')" -RawValue $Raw
+}
+
+function Invoke-ODCheck_KFMOptInDoneFlag {
+    $CheckName = 'KFMOptInDoneFlag'
+    $Group     = 'Runtime'
+
+    # KfmIsDoneSilentOptIn and KfmIsDoneWizard are written directly by the
+    # OneDrive sync engine under Business1 when it finishes a KFM flow.
+    # They are more authoritative than the KFM subkey completion flags (which
+    # are fuzzy-matched) and more reliable than the log (which rotates).
+    # Critically: these flags are only set when OneDrive itself performed the
+    # redirect — folders moved manually by IT will NOT have these flags even
+    # though the shell folder paths point to OneDrive.
+    if (-not (Test-Path $OD_ACCOUNT_HKCU)) {
+        return New-CheckResult -CheckName $CheckName -Group $Group -Status 'Unknown' `
+            -Detail 'Business1 key absent — account not signed in; KFM engine completion flags unavailable.' `
+            -RawValue $null
+    }
+
+    $SilentDone = Get-RegValueSafe -Path $OD_ACCOUNT_HKCU -Name 'KfmIsDoneSilentOptIn'
+    $WizardDone = Get-RegValueSafe -Path $OD_ACCOUNT_HKCU -Name 'KfmIsDoneWizard'
+    $Raw        = "KfmIsDoneSilentOptIn=$SilentDone | KfmIsDoneWizard=$WizardDone"
+
+    # Active policy mode — used to validate the flag matches what was deployed
+    $PolicySilent    = Get-RegValueSafe -Path $OD_POLICY_HKLM -Name 'KFMSilentOptIn'
+    $PolicyWizard    = Get-RegValueSafe -Path $OD_POLICY_HKLM -Name 'KFMOptInWithWizard'
+    $HasSilentPolicy = [bool]$PolicySilent
+    $HasWizardPolicy = [bool]$PolicyWizard
+
+    if ($SilentDone -eq 1) {
+        if ($HasSilentPolicy) {
+            return New-CheckResult -CheckName $CheckName -Group $Group -Status 'Pass' `
+                -Detail 'KfmIsDoneSilentOptIn=1 — OneDrive engine confirms the admin-deployed silent KFM opt-in completed successfully on this device. Matches active KFMSilentOptIn policy.' `
+                -RawValue $Raw
+        }
+        return New-CheckResult -CheckName $CheckName -Group $Group -Status 'Info' `
+            -Detail 'KfmIsDoneSilentOptIn=1 — silent KFM completed previously. No active KFMSilentOptIn policy is currently deployed; flag reflects a prior configuration.' `
+            -RawValue $Raw
+    }
+
+    if ($WizardDone -eq 1) {
+        if ($HasWizardPolicy) {
+            return New-CheckResult -CheckName $CheckName -Group $Group -Status 'Pass' `
+                -Detail 'KfmIsDoneWizard=1 — OneDrive engine confirms the user completed the KFM opt-in wizard successfully. Matches active KFMOptInWithWizard policy.' `
+                -RawValue $Raw
+        }
+        return New-CheckResult -CheckName $CheckName -Group $Group -Status 'Info' `
+            -Detail 'KfmIsDoneWizard=1 — wizard KFM completed previously. No active KFMOptInWithWizard policy is currently deployed; flag reflects a prior configuration.' `
+            -RawValue $Raw
+    }
+
+    # Both flags absent — check whether folders are already in OneDrive to
+    # distinguish a pending KFM from a manual IT migration
+    if ($null -eq $SilentDone -and $null -eq $WizardDone) {
+        $ShellDesktop = Get-RegValueSafe -Path $SHELL_FOLDERS_HKCU -Name 'Desktop'
+        $ShellDocs    = Get-RegValueSafe -Path $SHELL_FOLDERS_HKCU -Name 'Personal'
+        $ShellPics    = Get-RegValueSafe -Path $SHELL_FOLDERS_HKCU -Name 'My Pictures'
+        $InODCount    = @($ShellDesktop, $ShellDocs, $ShellPics |
+                          Where-Object { $_ -like '*OneDrive*' }).Count
+
+        if ($InODCount -gt 0) {
+            return New-CheckResult -CheckName $CheckName -Group $Group -Status 'Warning' `
+                -Detail "KfmIsDoneSilentOptIn and KfmIsDoneWizard are both absent, but $InODCount of 3 shell folders already point to OneDrive. Folders were likely moved manually rather than via the KFM engine — OneDrive does not write completion flags for manual moves. If KFMSilentOptIn policy is active, OneDrive may re-evaluate and set the flag on the next sync cycle." `
+                -RawValue $Raw
+        }
+        return New-CheckResult -CheckName $CheckName -Group $Group -Status 'Info' `
+            -Detail 'KfmIsDoneSilentOptIn and KfmIsDoneWizard are both absent and no folders are in OneDrive yet. KFM has not completed on this device, or this client version does not write these flags.' `
+            -RawValue $Raw
+    }
+
+    # Flags present but not 1 (partial or in-progress state)
+    return New-CheckResult -CheckName $CheckName -Group $Group -Status 'Warning' `
+        -Detail "KFM completion flags present but neither equals 1. KFM may be in progress or encountered an error. (KfmIsDoneSilentOptIn=$SilentDone | KfmIsDoneWizard=$WizardDone)" `
+        -RawValue $Raw
 }
 
 function Invoke-ODCheck_SyncDiagKFMState {
@@ -1976,6 +2058,7 @@ $CheckRegistry = @(
     @{ Fn = 'Invoke-ODCheck_DocumentsRedirected';    Group = 'Runtime'            }
     @{ Fn = 'Invoke-ODCheck_PicturesRedirected';     Group = 'Runtime'            }
     @{ Fn = 'Invoke-ODCheck_KFMCompletionFlags';     Group = 'Runtime'            }
+    @{ Fn = 'Invoke-ODCheck_KFMOptInDoneFlag';       Group = 'Runtime'            }
     @{ Fn = 'Invoke-ODCheck_SyncDiagKFMState';       Group = 'Runtime'            }
 
     @{ Fn = 'Invoke-ODCheck_FolderSizes';                Group = 'Blockers'           }
